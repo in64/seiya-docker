@@ -1,0 +1,61 @@
+name: release_docker
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  REGISTRY: cqx8/seiya
+  REGISTRY_USERNAME: cqx8
+  REGISTRY_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version/tag
+        id: get_version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+            echo "version=${TAG_NAME}" >> $GITHUB_OUTPUT
+          else
+            SHORT_HASH=$(git rev-parse --short HEAD)
+            echo "version=${SHORT_HASH}" >> $GITHUB_OUTPUT
+          fi
+
+  build_and_push:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.REGISTRY_USERNAME }}
+          password: ${{ env.REGISTRY_PASSWORD }}
+
+      - name: Build and Push multi-arch image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}:latest
+            ${{ env.REGISTRY }}:${{ needs.setup.outputs.version }}
