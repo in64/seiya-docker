@@ -25,6 +25,9 @@ for service in "$@"; do
     uni-api)
       curl -fsSL "https://in64.github.io/seiya-docker/services/uni-api/start.sh" -o - | bash
       ;;
+    sshd)
+      curl -fsSL "https://in64.github.io/seiya-docker/services/sshd/start.sh" -o - | bash
+      ;;
     *)
       echo "未知服务: $service"
       exit 1
